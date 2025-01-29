@@ -1,0 +1,33 @@
+pipeline {
+    agent { label 'dev-server' }
+    stages {
+        stage('code clone') {
+            steps{
+                echo 'cloning'
+                git url: "https://github.com/ArjunMnn/django-notes-app", branch: "main"
+            }
+        }
+        stage('build') {
+            steps{
+                 echo 'building'
+                 sh 'docker build --no-cache -t my-note-app .'
+            }
+        }
+        stage('push to dockerhub') {
+            steps{
+                echo 'pushing'
+                withCredentials([usernamePassword(credentialsId:"dockerHub",passwordVariable:"dockerHubPass",usernameVariable:"dockerHubUser")]){
+                    sh "docker tag my-note-app ${env.dockerHubUser}/my-note-app:latest"
+                    sh "docker login -u ${env.dockerHubUser} -p ${dockerHubPass}"
+                    sh "docker push ${env.dockerHubUser}/my-note-app:latest"
+                }
+            }
+        }
+        stage('deploy') {
+           steps{
+                echo 'deploying'
+                sh "docker-compose down && docker-compose build --no-cache && docker-compose up -d --build"
+           }
+        }
+    }
+}
